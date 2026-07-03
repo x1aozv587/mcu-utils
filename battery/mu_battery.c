@@ -280,8 +280,10 @@ static uint8_t calc_percent( const mu_battery_params_t *p_params,
         return 0;
     }
 
-    /**< 整包电压转单电芯电压 */
-    cell_mv = voltage_mv / ( uint16_t )p_params->cell_count;
+    /**< 整包电压转单电芯电压（四舍五入） */
+    cell_mv = ( uint16_t )( ( ( uint32_t )voltage_mv +
+                              p_params->cell_count / 2U ) /
+                            p_params->cell_count );
 
     if( p_params->p_curve != NULL && p_params->curve_point_count >= 2U )
     {
@@ -300,19 +302,19 @@ static void update_state( mu_battery_t *p_battery )
     total_low = ( uint32_t )p_battery->p_params->voltage_low_mv *
                 p_battery->p_params->cell_count;
 
-    /**< 充电中状态由 set_charging 管理，此处仅更新 FULL */
-    if( p_battery->state == MU_BATTERY_STATE_CHARGING )
+    if( p_battery->voltage_mv == 0U )
+    {
+        return;
+    }
+
+    /**< 充电中：状态由 is_charging 管理，仅更新 FULL */
+    if( p_battery->is_charging == true )
     {
         if( p_battery->percent >= 100U )
         {
             p_battery->state = MU_BATTERY_STATE_FULL;
         }
 
-        return;
-    }
-
-    if( p_battery->voltage_mv == 0U )
-    {
         return;
     }
 
@@ -403,6 +405,8 @@ void mu_battery_set_charging( mu_battery_t *p_battery, bool charging )
         return;
     }
 
+    p_battery->is_charging = charging;
+
     if( charging == true )
     {
         p_battery->state = MU_BATTERY_STATE_CHARGING;
@@ -410,11 +414,10 @@ void mu_battery_set_charging( mu_battery_t *p_battery, bool charging )
         return;
     }
 
-    /**< 退出充电：先清状态再重新判断 */
+    /**< 退出充电：更新 is_charging 标志后重新判断状态 */
     if( p_battery->state == MU_BATTERY_STATE_CHARGING ||
         p_battery->state == MU_BATTERY_STATE_FULL )
     {
-        p_battery->state = MU_BATTERY_STATE_UNKNOWN;
         update_state( p_battery );
     }
 }

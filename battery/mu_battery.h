@@ -21,7 +21,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "..\mu_common.h"
+#include "mu_common.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -82,6 +82,7 @@ typedef struct
     uint16_t    voltage_raw_mv;             /**< 当前原始电压，单位 mV */
     uint8_t     percent;                    /**< 当前电量百分比 0~100 */
     mu_battery_state_t state;              /**< 当前状态 */
+    bool        is_charging;               /**< 充电标志（由 set_charging 管理，独立于 state） */
     uint16_t    filter_buf[16];             /**< 滤波窗口缓冲 */
     uint8_t     filter_idx;                 /**< 滤波缓冲写入索引 */
     uint8_t     filter_cnt;                 /**< 已累积采样数 */
@@ -89,9 +90,14 @@ typedef struct
 
 /* ==================== 宏 ==================== */
 
-/**< 静态初始化宏 */
+/**
+ * @brief 静态初始化宏（仅做赋值，不校验参数）
+ *
+ * @note 本宏不调用 is_valid_params()，不做参数校验。
+ *       推荐运行时使用 mu_battery_init() 以进行完整校验。
+ */
 #define MU_BATTERY_INIT( params_ptr ) \
-    { ( params_ptr ), 0, 0, 0, MU_BATTERY_STATE_UNKNOWN, {0}, 0, 0 }
+    { ( params_ptr ), 0, 0, 0, MU_BATTERY_STATE_UNKNOWN, false, {0}, 0, 0 }
 
 /* ==================== 接口 ==================== */
 
@@ -161,6 +167,7 @@ mu_battery_state_t mu_battery_get_state( const mu_battery_t *p_battery );
  * @brief 设置充电状态
  *
  * 充电状态通常由充电 IC 或 GPIO 检测，由调用方主动设置。
+ * 调用后内部 is_charging 标志持续有效，直到再次调用 set_charging(false)。
  *
  * @param p_battery 电池上下文
  * @param charging  true=充电中，false=未充电
