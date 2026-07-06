@@ -9,10 +9,11 @@
 static bool mu_ringbuf_is_valid( const mu_ringbuf_t *p_rb );
 static void mu_ringbuf_lock( mu_ringbuf_t *p_rb );
 static void mu_ringbuf_unlock( mu_ringbuf_t *p_rb );
-static uint32_t get_count( const mu_ringbuf_t *p_rb );
+static uint32_t mu_ringbuf_get_count_internal( const mu_ringbuf_t *p_rb );
 
 /* ==================== 静态函数 ==================== */
 
+/**< 校验 ringbuf 对象是否有效 */
 static bool mu_ringbuf_is_valid( const mu_ringbuf_t *p_rb )
 {
     if( p_rb == NULL )
@@ -38,6 +39,7 @@ static bool mu_ringbuf_is_valid( const mu_ringbuf_t *p_rb )
     return true;
 }
 
+/**< 加锁（调用外部注册的 enter_mutex 回调） */
 static void mu_ringbuf_lock( mu_ringbuf_t *p_rb )
 {
     if( p_rb->enter_mutex != NULL )
@@ -46,6 +48,7 @@ static void mu_ringbuf_lock( mu_ringbuf_t *p_rb )
     }
 }
 
+/**< 解锁（调用外部注册的 exit_mutex 回调） */
 static void mu_ringbuf_unlock( mu_ringbuf_t *p_rb )
 {
     if( p_rb->exit_mutex != NULL )
@@ -54,7 +57,8 @@ static void mu_ringbuf_unlock( mu_ringbuf_t *p_rb )
     }
 }
 
-static uint32_t get_count( const mu_ringbuf_t *p_rb )
+/**< 获取当前已存储数据量（不加锁，由调用方控制） */
+static uint32_t mu_ringbuf_get_count_internal( const mu_ringbuf_t *p_rb )
 {
     if( p_rb->head >= p_rb->tail )
     {
@@ -62,6 +66,29 @@ static uint32_t get_count( const mu_ringbuf_t *p_rb )
     }
 
     return p_rb->size - p_rb->tail + p_rb->head;
+}
+
+/* ==================== 初始化 ==================== */
+
+mu_status_t mu_ringbuf_init( mu_ringbuf_t *p_rb,
+                             uint8_t *p_buffer,
+                             uint32_t size,
+                             mu_ringbuf_mutex_fn_t enter_mutex,
+                             mu_ringbuf_mutex_fn_t exit_mutex )
+{
+    if( p_rb == NULL || p_buffer == NULL || size < RINGBUF_VAILD_BUFF_SIZE )
+    {
+        return MU_ERR_PARAM;
+    }
+
+    p_rb->buffer      = p_buffer;
+    p_rb->size        = size;
+    p_rb->head        = 0;
+    p_rb->tail        = 0;
+    p_rb->enter_mutex = enter_mutex;
+    p_rb->exit_mutex  = exit_mutex;
+
+    return MU_OK;
 }
 
 /* ==================== 对外接口 ==================== */
@@ -80,7 +107,7 @@ uint32_t mu_ringbuf_write( mu_ringbuf_t *p_rb, const uint8_t *p_data, uint32_t l
 
     mu_ringbuf_lock( p_rb );
 
-    count = get_count( p_rb );
+    count = mu_ringbuf_get_count_internal( p_rb );
     free  = p_rb->size - count - 1;
     write_len = ( len > free ) ? free : len;
 
@@ -119,7 +146,7 @@ uint32_t mu_ringbuf_read( mu_ringbuf_t *p_rb, uint8_t *p_data, uint32_t len )
 
     mu_ringbuf_lock( p_rb );
 
-    count = get_count( p_rb );
+    count = mu_ringbuf_get_count_internal( p_rb );
     read_len = ( len > count ) ? count : len;
 
     if( read_len > 0 )
@@ -174,7 +201,7 @@ uint32_t mu_ringbuf_peek( mu_ringbuf_t *p_rb,
 
     mu_ringbuf_lock( p_rb );
 
-    count = get_count( p_rb );
+    count = mu_ringbuf_get_count_internal( p_rb );
 
     if( offset >= count )
     {
@@ -216,7 +243,7 @@ uint32_t mu_ringbuf_drop( mu_ringbuf_t *p_rb, uint32_t len )
 
     mu_ringbuf_lock( p_rb );
 
-    count = get_count( p_rb );
+    count = mu_ringbuf_get_count_internal( p_rb );
     drop_len = ( len > count ) ? count : len;
 
     if( drop_len > 0 )
@@ -239,29 +266,6 @@ uint32_t mu_ringbuf_read_byte( mu_ringbuf_t *p_rb, uint8_t *p_data )
     return mu_ringbuf_read( p_rb, p_data, 1 );
 }
 
-/* ==================== 初始化 ==================== */
-
-mu_status_t mu_ringbuf_init( mu_ringbuf_t *p_rb,
-                             uint8_t *p_buffer,
-                             uint32_t size,
-                             mu_ringbuf_mutex_fn_t enter_mutex,
-                             mu_ringbuf_mutex_fn_t exit_mutex )
-{
-    if( p_rb == NULL || p_buffer == NULL || size < RINGBUF_VAILD_BUFF_SIZE )
-    {
-        return MU_ERR_PARAM;
-    }
-
-    p_rb->buffer      = p_buffer;
-    p_rb->size        = size;
-    p_rb->head        = 0;
-    p_rb->tail        = 0;
-    p_rb->enter_mutex = enter_mutex;
-    p_rb->exit_mutex  = exit_mutex;
-
-    return MU_OK;
-}
-
 /* ==================== Get 函数 ==================== */
 
 uint32_t mu_ringbuf_get_free( mu_ringbuf_t *p_rb )
@@ -274,7 +278,7 @@ uint32_t mu_ringbuf_get_free( mu_ringbuf_t *p_rb )
     }
 
     mu_ringbuf_lock( p_rb );
-    free = p_rb->size - get_count( p_rb ) - 1;
+    free = p_rb->size - mu_ringbuf_get_count_internal( p_rb ) - 1;
     mu_ringbuf_unlock( p_rb );
 
     return free;
@@ -290,7 +294,7 @@ uint32_t mu_ringbuf_get_count( mu_ringbuf_t *p_rb )
     }
 
     mu_ringbuf_lock( p_rb );
-    count = get_count( p_rb );
+    count = mu_ringbuf_get_count_internal( p_rb );
     mu_ringbuf_unlock( p_rb );
 
     return count;
@@ -332,8 +336,8 @@ bool mu_ringbuf_is_full( mu_ringbuf_t *p_rb )
     }
 
     mu_ringbuf_lock( p_rb );
-    result = ( get_count( p_rb ) >= p_rb->size - 1 );
+    result = ( mu_ringbuf_get_count_internal( p_rb ) >= p_rb->size - 1 );
     mu_ringbuf_unlock( p_rb );
 
     return result;
-}
+}
