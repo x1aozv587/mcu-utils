@@ -21,7 +21,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "mu_common.h"
+#include "../mu_common.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -4,6 +4,15 @@
 
 #define RINGBUF_VAILD_BUFF_SIZE     2
 
+/* ==================== 静态函数声明 ==================== */
+
+static bool mu_ringbuf_is_valid( const mu_ringbuf_t *p_rb );
+static void mu_ringbuf_lock( mu_ringbuf_t *p_rb );
+static void mu_ringbuf_unlock( mu_ringbuf_t *p_rb );
+static uint32_t get_count( const mu_ringbuf_t *p_rb );
+
+/* ==================== 静态函数 ==================== */
+
 static bool mu_ringbuf_is_valid( const mu_ringbuf_t *p_rb )
 {
     if( p_rb == NULL )
@@ -55,26 +64,7 @@ static uint32_t get_count( const mu_ringbuf_t *p_rb )
     return p_rb->size - p_rb->tail + p_rb->head;
 }
 
-mu_status_t mu_ringbuf_init( mu_ringbuf_t *p_rb,
-                             uint8_t *p_buffer,
-                             uint32_t size,
-                             mu_ringbuf_mutex_fn_t enter_mutex,
-                             mu_ringbuf_mutex_fn_t exit_mutex )
-{
-    if( p_rb == NULL || p_buffer == NULL || size < RINGBUF_VAILD_BUFF_SIZE )
-    {
-        return MU_ERR_PARAM;
-    }
-
-    p_rb->buffer      = p_buffer;
-    p_rb->size        = size;
-    p_rb->head        = 0;
-    p_rb->tail        = 0;
-    p_rb->enter_mutex = enter_mutex;
-    p_rb->exit_mutex  = exit_mutex;
-
-    return MU_OK;
-}
+/* ==================== 对外接口 ==================== */
 
 uint32_t mu_ringbuf_write( mu_ringbuf_t *p_rb, const uint8_t *p_data, uint32_t len )
 {
@@ -152,80 +142,6 @@ uint32_t mu_ringbuf_read( mu_ringbuf_t *p_rb, uint8_t *p_data, uint32_t len )
     mu_ringbuf_unlock( p_rb );
 
     return read_len;
-}
-
-uint32_t mu_ringbuf_get_free( mu_ringbuf_t *p_rb )
-{
-    uint32_t free = 0;
-
-    if( mu_ringbuf_is_valid( p_rb ) == false )
-    {
-        return 0;
-    }
-
-    mu_ringbuf_lock( p_rb );
-    free = p_rb->size - get_count( p_rb ) - 1;
-    mu_ringbuf_unlock( p_rb );
-
-    return free;
-}
-
-uint32_t mu_ringbuf_get_count( mu_ringbuf_t *p_rb )
-{
-    uint32_t count = 0;
-
-    if( mu_ringbuf_is_valid( p_rb ) == false )
-    {
-        return 0;
-    }
-
-    mu_ringbuf_lock( p_rb );
-    count = get_count( p_rb );
-    mu_ringbuf_unlock( p_rb );
-
-    return count;
-}
-
-uint32_t mu_ringbuf_get_capacity( mu_ringbuf_t *p_rb )
-{
-    if( mu_ringbuf_is_valid( p_rb ) == false )
-    {
-        return 0;
-    }
-
-    return p_rb->size - 1;
-}
-
-bool mu_ringbuf_is_empty( mu_ringbuf_t *p_rb )
-{
-    bool result = true;
-
-    if( mu_ringbuf_is_valid( p_rb ) == false )
-    {
-        return true;
-    }
-
-    mu_ringbuf_lock( p_rb );
-    result = ( p_rb->head == p_rb->tail );
-    mu_ringbuf_unlock( p_rb );
-
-    return result;
-}
-
-bool mu_ringbuf_is_full( mu_ringbuf_t *p_rb )
-{
-    bool result = true;
-
-    if( mu_ringbuf_is_valid( p_rb ) == false )
-    {
-        return true;
-    }
-
-    mu_ringbuf_lock( p_rb );
-    result = ( get_count( p_rb ) >= p_rb->size - 1 );
-    mu_ringbuf_unlock( p_rb );
-
-    return result;
 }
 
 void mu_ringbuf_reset( mu_ringbuf_t *p_rb )
@@ -322,3 +238,102 @@ uint32_t mu_ringbuf_read_byte( mu_ringbuf_t *p_rb, uint8_t *p_data )
 {
     return mu_ringbuf_read( p_rb, p_data, 1 );
 }
+
+/* ==================== 初始化 ==================== */
+
+mu_status_t mu_ringbuf_init( mu_ringbuf_t *p_rb,
+                             uint8_t *p_buffer,
+                             uint32_t size,
+                             mu_ringbuf_mutex_fn_t enter_mutex,
+                             mu_ringbuf_mutex_fn_t exit_mutex )
+{
+    if( p_rb == NULL || p_buffer == NULL || size < RINGBUF_VAILD_BUFF_SIZE )
+    {
+        return MU_ERR_PARAM;
+    }
+
+    p_rb->buffer      = p_buffer;
+    p_rb->size        = size;
+    p_rb->head        = 0;
+    p_rb->tail        = 0;
+    p_rb->enter_mutex = enter_mutex;
+    p_rb->exit_mutex  = exit_mutex;
+
+    return MU_OK;
+}
+
+/* ==================== Get 函数 ==================== */
+
+uint32_t mu_ringbuf_get_free( mu_ringbuf_t *p_rb )
+{
+    uint32_t free = 0;
+
+    if( mu_ringbuf_is_valid( p_rb ) == false )
+    {
+        return 0;
+    }
+
+    mu_ringbuf_lock( p_rb );
+    free = p_rb->size - get_count( p_rb ) - 1;
+    mu_ringbuf_unlock( p_rb );
+
+    return free;
+}
+
+uint32_t mu_ringbuf_get_count( mu_ringbuf_t *p_rb )
+{
+    uint32_t count = 0;
+
+    if( mu_ringbuf_is_valid( p_rb ) == false )
+    {
+        return 0;
+    }
+
+    mu_ringbuf_lock( p_rb );
+    count = get_count( p_rb );
+    mu_ringbuf_unlock( p_rb );
+
+    return count;
+}
+
+uint32_t mu_ringbuf_get_capacity( mu_ringbuf_t *p_rb )
+{
+    if( mu_ringbuf_is_valid( p_rb ) == false )
+    {
+        return 0;
+    }
+
+    return p_rb->size - 1;
+}
+
+bool mu_ringbuf_is_empty( mu_ringbuf_t *p_rb )
+{
+    bool result = true;
+
+    if( mu_ringbuf_is_valid( p_rb ) == false )
+    {
+        return true;
+    }
+
+    mu_ringbuf_lock( p_rb );
+    result = ( p_rb->head == p_rb->tail );
+    mu_ringbuf_unlock( p_rb );
+
+    return result;
+}
+
+bool mu_ringbuf_is_full( mu_ringbuf_t *p_rb )
+{
+    bool result = true;
+
+    if( mu_ringbuf_is_valid( p_rb ) == false )
+    {
+        return true;
+    }
+
+    mu_ringbuf_lock( p_rb );
+    result = ( get_count( p_rb ) >= p_rb->size - 1 );
+    mu_ringbuf_unlock( p_rb );
+
+    return result;
+}

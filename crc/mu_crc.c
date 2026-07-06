@@ -1,5 +1,68 @@
 #include "mu_crc.h"
 
+/* ==================== 静态函数声明 ==================== */
+
+static uint32_t mu_crc_width_mask( uint8_t width );
+static uint32_t mu_crc_top_bit( uint8_t width );
+static uint32_t mu_crc_unfinalize_bitwise( const mu_crc_params_t *p_param, uint32_t crc );
+static uint32_t mu_crc_unfinalize_tbl( const mu_crc_params_t *p_param, uint32_t crc );
+
+/* ==================== 静态函数 ==================== */
+
+static uint32_t mu_crc_width_mask( uint8_t width )
+{
+    if( width >= 32U )
+    {
+        return 0xFFFFFFFFUL;
+    }
+
+    return ( 1UL << width ) - 1UL;
+}
+
+
+static uint32_t mu_crc_top_bit( uint8_t width )
+{
+    return 1UL << ( width - 1U );
+}
+
+
+static uint32_t mu_crc_unfinalize_bitwise( const mu_crc_params_t *p_param,
+                                           uint32_t crc )
+{
+    uint32_t mask = mu_crc_width_mask( p_param->width );
+
+    crc ^= p_param->xor_out;
+
+    if( p_param->ref_out == true )
+    {
+        crc = mu_crc_reflect( crc, p_param->width );
+    }
+
+    crc &= mask;
+
+    return crc;
+}
+
+
+static uint32_t mu_crc_unfinalize_tbl( const mu_crc_params_t *p_param,
+                                       uint32_t crc )
+{
+    uint32_t mask = mu_crc_width_mask( p_param->width );
+
+    crc ^= p_param->xor_out;
+
+    if( p_param->ref_in != p_param->ref_out )
+    {
+        crc = mu_crc_reflect( crc, p_param->width );
+    }
+
+    crc &= mask;
+
+    return crc;
+}
+
+/* ==================== 对外接口 ==================== */
+
 uint32_t mu_crc_reflect( uint32_t data, uint8_t width )
 {
     uint8_t i = 0;
@@ -18,22 +81,6 @@ uint32_t mu_crc_reflect( uint32_t data, uint8_t width )
     return ret;
 }
 
-static uint32_t mu_crc_width_mask( uint8_t width )
-{
-    if( width >= 32U )
-    {
-        return 0xFFFFFFFFUL;
-    }
-
-    return ( 1UL << width ) - 1UL;
-}
-
-static uint32_t mu_crc_top_bit( uint8_t width )
-{
-    return 1UL << ( width - 1U );
-}
-
-/* ==================== feed ==================== */
 
 uint32_t mu_crc_feed( const mu_crc_params_t *p_param,
                       uint32_t crc,
@@ -85,6 +132,7 @@ uint32_t mu_crc_feed( const mu_crc_params_t *p_param,
     return crc;
 }
 
+
 uint32_t mu_crc_feed_tbl( const mu_crc_params_t *p_param,
                           uint32_t crc,
                           const uint8_t *p_data,
@@ -124,7 +172,6 @@ uint32_t mu_crc_feed_tbl( const mu_crc_params_t *p_param,
     return crc;
 }
 
-/* ==================== 一次性计算 ==================== */
 
 uint32_t mu_crc_calc( const mu_crc_params_t *p_param,
                       const uint8_t *p_data,
@@ -163,6 +210,7 @@ uint32_t mu_crc_calc( const mu_crc_params_t *p_param,
 
     return crc;
 }
+
 
 uint32_t mu_crc_calc_tbl( const mu_crc_params_t *p_param,
                           const uint8_t *p_data,
@@ -203,41 +251,6 @@ uint32_t mu_crc_calc_tbl( const mu_crc_params_t *p_param,
     return crc;
 }
 
-/* ==================== 续算 ==================== */
-
-static uint32_t mu_crc_unfinalize_bitwise( const mu_crc_params_t *p_param,
-                                           uint32_t crc )
-{
-    uint32_t mask = mu_crc_width_mask( p_param->width );
-
-    crc ^= p_param->xor_out;
-
-    if( p_param->ref_out == true )
-    {
-        crc = mu_crc_reflect( crc, p_param->width );
-    }
-
-    crc &= mask;
-
-    return crc;
-}
-
-static uint32_t mu_crc_unfinalize_tbl( const mu_crc_params_t *p_param,
-                                       uint32_t crc )
-{
-    uint32_t mask = mu_crc_width_mask( p_param->width );
-
-    crc ^= p_param->xor_out;
-
-    if( p_param->ref_in != p_param->ref_out )
-    {
-        crc = mu_crc_reflect( crc, p_param->width );
-    }
-
-    crc &= mask;
-
-    return crc;
-}
 
 uint32_t mu_crc_continue( const mu_crc_params_t *p_param,
                           uint32_t prev_crc,
@@ -276,6 +289,7 @@ uint32_t mu_crc_continue( const mu_crc_params_t *p_param,
 
     return crc;
 }
+
 
 uint32_t mu_crc_continue_tbl( const mu_crc_params_t *p_param,
                               uint32_t prev_crc,

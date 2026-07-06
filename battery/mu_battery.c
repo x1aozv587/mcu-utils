@@ -2,7 +2,19 @@
 
 #include <string.h>
 
-/* ==================== 工具函数 ==================== */
+/* ==================== 静态函数声明 ==================== */
+
+static uint8_t clamp_percent( uint32_t percent );
+static bool is_valid_curve( const mu_battery_curve_point_t *p_curve, uint8_t count );
+static bool is_valid_params( const mu_battery_params_t *p_params );
+static uint16_t adc_to_voltage( const mu_battery_params_t *p_params, uint16_t adc_raw );
+static uint16_t filter_voltage( mu_battery_t *p_battery, uint16_t voltage_mv );
+static uint8_t calc_percent_linear_by_cell( const mu_battery_params_t *p_params, uint16_t cell_mv );
+static uint8_t calc_percent_curve( const mu_battery_params_t *p_params, uint16_t cell_mv );
+static uint8_t calc_percent( const mu_battery_params_t *p_params, uint16_t voltage_mv );
+static void update_state( mu_battery_t *p_battery );
+
+/* ==================== 静态函数 ==================== */
 
 static uint8_t clamp_percent( uint32_t percent )
 {
@@ -14,7 +26,6 @@ static uint8_t clamp_percent( uint32_t percent )
     return ( uint8_t )percent;
 }
 
-/* ==================== 曲线表校验 ==================== */
 
 static bool is_valid_curve( const mu_battery_curve_point_t *p_curve,
                             uint8_t count )
@@ -51,7 +62,6 @@ static bool is_valid_curve( const mu_battery_curve_point_t *p_curve,
     return true;
 }
 
-/* ==================== 参数校验 ==================== */
 
 static bool is_valid_params( const mu_battery_params_t *p_params )
 {
@@ -115,25 +125,6 @@ static bool is_valid_params( const mu_battery_params_t *p_params )
     return true;
 }
 
-/* ==================== 初始化 ==================== */
-
-mu_status_t mu_battery_init( mu_battery_t *p_battery,
-                             const mu_battery_params_t *p_params )
-{
-    if( p_battery == NULL || is_valid_params( p_params ) == false )
-    {
-        return MU_ERR_PARAM;
-    }
-
-    memset( p_battery, 0, sizeof( mu_battery_t ) );
-
-    p_battery->p_params = p_params;
-    p_battery->state    = MU_BATTERY_STATE_UNKNOWN;
-
-    return MU_OK;
-}
-
-/* ==================== 电压转换 ==================== */
 
 static uint16_t adc_to_voltage( const mu_battery_params_t *p_params,
                                 uint16_t adc_raw )
@@ -156,7 +147,6 @@ static uint16_t adc_to_voltage( const mu_battery_params_t *p_params,
     return ( uint16_t )voltage;
 }
 
-/* ==================== 滑动滤波 ==================== */
 
 static uint16_t filter_voltage( mu_battery_t *p_battery, uint16_t voltage_mv )
 {
@@ -188,7 +178,6 @@ static uint16_t filter_voltage( mu_battery_t *p_battery, uint16_t voltage_mv )
     return result;
 }
 
-/* ==================== 电量百分比 ==================== */
 
 static uint8_t calc_percent_linear_by_cell( const mu_battery_params_t *p_params,
                                             uint16_t cell_mv )
@@ -214,6 +203,7 @@ static uint8_t calc_percent_linear_by_cell( const mu_battery_params_t *p_params,
 
     return clamp_percent( percent );
 }
+
 
 static uint8_t calc_percent_curve( const mu_battery_params_t *p_params,
                                    uint16_t cell_mv )
@@ -270,6 +260,7 @@ static uint8_t calc_percent_curve( const mu_battery_params_t *p_params,
     return 0;
 }
 
+
 static uint8_t calc_percent( const mu_battery_params_t *p_params,
                              uint16_t voltage_mv )
 {
@@ -293,7 +284,6 @@ static uint8_t calc_percent( const mu_battery_params_t *p_params,
     return calc_percent_linear_by_cell( p_params, cell_mv );
 }
 
-/* ==================== 状态更新 ==================== */
 
 static void update_state( mu_battery_t *p_battery )
 {
@@ -353,6 +343,7 @@ void mu_battery_feed_adc( mu_battery_t *p_battery, uint16_t adc_raw )
     update_state( p_battery );
 }
 
+
 void mu_battery_feed_voltage( mu_battery_t *p_battery, uint16_t voltage_mv )
 {
     if( p_battery == NULL || p_battery->p_params == NULL )
@@ -368,35 +359,6 @@ void mu_battery_feed_voltage( mu_battery_t *p_battery, uint16_t voltage_mv )
     update_state( p_battery );
 }
 
-uint16_t mu_battery_get_voltage( const mu_battery_t *p_battery )
-{
-    if( p_battery == NULL )
-    {
-        return 0;
-    }
-
-    return p_battery->voltage_mv;
-}
-
-uint8_t mu_battery_get_percent( const mu_battery_t *p_battery )
-{
-    if( p_battery == NULL )
-    {
-        return 0;
-    }
-
-    return p_battery->percent;
-}
-
-mu_battery_state_t mu_battery_get_state( const mu_battery_t *p_battery )
-{
-    if( p_battery == NULL )
-    {
-        return MU_BATTERY_STATE_UNKNOWN;
-    }
-
-    return p_battery->state;
-}
 
 void mu_battery_set_charging( mu_battery_t *p_battery, bool charging )
 {
@@ -420,4 +382,56 @@ void mu_battery_set_charging( mu_battery_t *p_battery, bool charging )
     {
         update_state( p_battery );
     }
+}
+
+/* ==================== 初始化 ==================== */
+
+mu_status_t mu_battery_init( mu_battery_t *p_battery,
+                             const mu_battery_params_t *p_params )
+{
+    if( p_battery == NULL || is_valid_params( p_params ) == false )
+    {
+        return MU_ERR_PARAM;
+    }
+
+    memset( p_battery, 0, sizeof( mu_battery_t ) );
+
+    p_battery->p_params = p_params;
+    p_battery->state    = MU_BATTERY_STATE_UNKNOWN;
+
+    return MU_OK;
+}
+
+/* ==================== Get 函数 ==================== */
+
+uint16_t mu_battery_get_voltage( const mu_battery_t *p_battery )
+{
+    if( p_battery == NULL )
+    {
+        return 0;
+    }
+
+    return p_battery->voltage_mv;
+}
+
+
+uint8_t mu_battery_get_percent( const mu_battery_t *p_battery )
+{
+    if( p_battery == NULL )
+    {
+        return 0;
+    }
+
+    return p_battery->percent;
+}
+
+
+mu_battery_state_t mu_battery_get_state( const mu_battery_t *p_battery )
+{
+    if( p_battery == NULL )
+    {
+        return MU_BATTERY_STATE_UNKNOWN;
+    }
+
+    return p_battery->state;
 }
