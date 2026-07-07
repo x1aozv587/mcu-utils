@@ -54,6 +54,10 @@ typedef enum
 #define BLES_ADV_FLAG_LE_BR_EDR_SAME       ( 1 << 3 )  /**< LE + BR/EDR 同时支持（控制器） */
 #define BLES_ADV_FLAG_LE_BR_EDR_SAME_HOST  ( 1 << 4 )  /**< LE + BR/EDR 同时支持（主机） */
 
+/**< 通用外设广播 Flags 组合：可发现 + 不支持 BR/EDR */
+#define BLES_ADV_FLAGS_GENERAL_NO_BREDR \
+    ( BLES_ADV_FLAG_LE_GENERAL | BLES_ADV_FLAG_BR_EDR_NOT_SUP )
+
 /* ==================== 组装器上下文 ==================== */
 
 /**< AD 数据组装器 */
@@ -122,7 +126,7 @@ bool bles_adv_append_flags( bles_adv_builder_t *p_builder, uint8_t flags );
  * @brief 追加设备名称 AD Structure
  *
  * @param p_builder 组装器指针
- * @param p_name    名称字符串
+ * @param p_name    名称字符串（不允许空字符串）
  * @param complete  true=完整名称，false=短名称
  *
  * @return true 成功

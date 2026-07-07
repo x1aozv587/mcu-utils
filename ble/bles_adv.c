@@ -25,7 +25,7 @@ mu_status_t bles_adv_builder_init( bles_adv_builder_t *p_builder,
                                    uint8_t *p_buf,
                                    uint16_t buf_size )
 {
-    if( p_builder == NULL || p_buf == NULL )
+    if( p_builder == NULL || p_buf == NULL || buf_size == 0U )
     {
         return MU_ERR_PARAM;
     }
@@ -54,12 +54,17 @@ bool bles_adv_append( bles_adv_builder_t *p_builder,
         return false;
     }
 
+    /**< AD Structure length 字段只有 1 字节，data_len 最大 254 */
+    if( data_len > 254U )
+    {
+        return false;
+    }
+
     if( bles_adv_is_room( p_builder, data_len ) == false )
     {
         return false;
     }
 
-    /**< AD Structure: [length][type][data...] */
     p_builder->p_buf[p_builder->pos] = ( uint8_t )( data_len + 1U );
     p_builder->pos++;
 
@@ -97,6 +102,19 @@ bool bles_adv_append_name( bles_adv_builder_t *p_builder,
                            bool complete )
 {
     bles_ad_type_t type;
+    size_t name_len;
+
+    if( p_name == NULL )
+    {
+        return false;
+    }
+
+    name_len = strlen( p_name );
+
+    if( name_len == 0U || name_len > 254U )
+    {
+        return false;
+    }
 
     if( complete == true )
     {
@@ -109,7 +127,7 @@ bool bles_adv_append_name( bles_adv_builder_t *p_builder,
 
     return bles_adv_append( p_builder, type,
                             ( const uint8_t * )p_name,
-                            ( uint16_t )strlen( p_name ) );
+                            ( uint16_t )name_len );
 }
 
 bool bles_adv_append_uuid16( bles_adv_builder_t *p_builder,
