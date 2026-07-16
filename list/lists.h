@@ -17,7 +17,7 @@
 #include <stddef.h>
 
 #ifdef __cplusplus
-extern C {
+extern "C" {
 #endif
 
 /* ==================== 节点与头 ==================== */
@@ -49,7 +49,8 @@ void lists_remove( lists_node_t *p_node );
  * @param p_pos  当前节点指针（lists_node_t *）
  * @param p_head 头节点指针（lists_node_t *）
  */
-#define lists_foreach( p_pos, p_head )     for( p_pos = (p_head)->next; p_pos != (p_head); p_pos = p_pos->next )
+#define lists_foreach( p_pos, p_head ) \
+    for( p_pos = (p_head)->next; p_pos != (p_head); p_pos = p_pos->next )
 
 /**
  * @brief 安全正向遍历（允许在循环内删除 p_pos）
@@ -58,20 +59,51 @@ void lists_remove( lists_node_t *p_node );
  * @param p_head 头节点指针（lists_node_t *）
  */
 #define lists_foreach_safe( p_pos, p_tmp, p_head ) \
-    for( p_pos = (p_head)->next, \
-         p_tmp = p_pos->next; \
+    for( p_pos = (p_head)->next, p_tmp = p_pos->next; \
          p_pos != (p_head); \
-         p_pos = p_tmp, \
-         p_tmp = p_pos->next )
-         
+         p_pos = p_tmp, p_tmp = p_pos->next )
+
 /**
  * @brief 从节点指针获取父结构体指针
  * @param p_node 节点指针
  * @param type   父结构体类型
  * @param member 节点在父结构体中的成员名
  */
-#define lists_entry(ptr, type, member) \
-    ((type *)((char *)(ptr) - offsetof(type, member)))
+#define lists_entry( p_node, type, member ) \
+    ( (type *)( (uint8_t *)(p_node) - offsetof(type, member) ) )
+
+/* ==================== 内联辅助 ==================== */
+
+/**< 判断链表是否为空 */
+static inline bool lists_is_empty( const lists_node_t *p_head )
+{
+    return p_head->next == p_head;
+}
+
+/**< 获取第一个节点 */
+static inline lists_node_t * lists_first( lists_node_t *p_head )
+{
+    return p_head->next;
+}
+
+/**< 获取最后一个节点 */
+static inline lists_node_t * lists_last( lists_node_t *p_head )
+{
+    return p_head->pre;
+}
+
+/**< 判断节点是否已链入链表 */
+static inline bool lists_is_linked( const lists_node_t *p_node )
+{
+    return p_node->next != NULL;
+}
+
+/**< 初始化节点（设为未链入状态） */
+static inline void lists_node_init( lists_node_t *p_node )
+{
+    p_node->next = NULL;
+    p_node->pre  = NULL;
+}
 
 #ifdef __cplusplus
 }
