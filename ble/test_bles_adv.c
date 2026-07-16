@@ -7,6 +7,7 @@
 #include "bles_adv.h"
 #include "bles_adv_ibeacon.h"
 #include "bles_filter_name.h"
+#include "bles_filter_uuid.h"
 
 static int g_pass = 0;
 static int g_fail = 0;
@@ -31,6 +32,8 @@ static int g_fail = 0;
             printf( "\n" ); \
         } \
     } while(0)
+
+/* ==================== builder ==================== */
 
 static void test_builder_init_ok( void )
 {
@@ -160,6 +163,43 @@ static void test_append_254( void )
     RUN( "append 254 len", 256, bles_adv_get_len( &b ) );
 }
 
+/* ==================== uuid filter ==================== */
+
+static void test_filter_uuid16( void )
+{
+    uint8_t adv[] = { 0x05, 0x03, 0x0D, 0x18, 0x0A, 0x18 };
+    uint16_t u1 = 0x180D;
+    uint16_t u2 = 0x180A;
+    uint16_t u3 = 0xFFFF;
+
+    RUN( "uuid16 ok", true, bles_filter_uuid_match( adv, sizeof(adv), (const uint8_t*)&u1, 2 ) );
+    RUN( "uuid16 multi", true, bles_filter_uuid_match( adv, sizeof(adv), (const uint8_t*)&u2, 2 ) );
+    RUN( "uuid16 fail", false, bles_filter_uuid_match( adv, sizeof(adv), (const uint8_t*)&u3, 2 ) );
+}
+
+static void test_filter_uuid_incomplete( void )
+{
+    uint8_t adv[] = { 0x05, 0x02, 0x0D, 0x18, 0xEE, 0xFF };
+    uint16_t u = 0xFFEE;
+
+    RUN( "uuid16 incomplete", true, bles_filter_uuid_match( adv, sizeof(adv), (const uint8_t*)&u, 2 ) );
+}
+
+static void test_filter_uuid_null( void )
+{
+    uint8_t adv[] = { 0x05, 0x03, 0x0D, 0x18, 0x0A, 0x18 };
+
+    RUN( "uuid null", false, bles_filter_uuid_match( adv, sizeof(adv), NULL, 2 ) );
+}
+
+static void test_filter_uuid_bad_len( void )
+{
+    uint8_t adv[] = { 0x05, 0x03, 0x0D, 0x18, 0x0A, 0x18 };
+    uint8_t u[4] = { 0 };
+
+    RUN( "uuid bad len 4", false, bles_filter_uuid_match( adv, sizeof(adv), u, 4 ) );
+}
+
 /* ==================== name filter ==================== */
 
 static void test_filter_name_exact( void )
@@ -210,6 +250,8 @@ static void test_filter_name_empty( void )
 
     RUN( "name empty", false, bles_filter_name_match( adv, sizeof(adv), "", BLES_FILTER_NAME_EXACT ) );
 }
+
+/* ==================== ibeacon ==================== */
 
 static void test_ibeacon_build( void )
 {
@@ -294,6 +336,12 @@ int main( void )
     test_append_no_room();
     test_append_255();
     test_append_254();
+
+    printf( "\n=== uuid filter ===\n" );
+    test_filter_uuid16();
+    test_filter_uuid_incomplete();
+    test_filter_uuid_null();
+    test_filter_uuid_bad_len();
 
     printf( "\n=== name filter ===\n" );
     test_filter_name_exact();
