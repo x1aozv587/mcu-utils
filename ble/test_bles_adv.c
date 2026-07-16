@@ -401,6 +401,14 @@ static void test_filter_manu_len0( void )
     RUN( "manu len 0", false, bles_filter_manufacturer_match( adv, sizeof(adv), d, 0 ) );
 }
 
+static void test_filter_manu_string( void )
+{
+    uint8_t adv[] = { 0x0B, 0xFF, 0x4C, 0x00, 'M', 'y', 'D', 'e', 'v', 0x00, 0x01, 0x02 };
+    const char *p_name = "MyDev";
+
+    RUN( "manu string", true, bles_filter_manufacturer_match( adv, sizeof(adv), (const uint8_t*)p_name, 5 ) );
+}
+
 /* ==================== ibeacon ==================== */
 
 static void test_ibeacon_build( void )
@@ -522,6 +530,7 @@ int main( void )
     test_filter_manu_too_long();
     test_filter_manu_null();
     test_filter_manu_len0();
+    test_filter_manu_string();
 
     printf( "\n=== ibeacon ===\n" );
     test_ibeacon_build();
