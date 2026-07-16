@@ -76,12 +76,16 @@ bool bles_filter_name_match( const uint8_t *p_adv, uint16_t adv_len,
         return false;
     }
 
-    ctx.name_len = ( uint8_t )strlen( p_name );
+    size_t name_len;
 
-    if( ctx.name_len == 0U )
+    name_len = strlen( p_name );
+
+    if( name_len == 0U || name_len > 255U )
     {
         return false;
     }
+
+    ctx.name_len = ( uint8_t )name_len;
 
     ctx.p_name = p_name;
     ctx.mode   = mode;

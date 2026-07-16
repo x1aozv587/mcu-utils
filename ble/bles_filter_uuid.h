@@ -29,7 +29,9 @@ extern "C" {
  * @param uuid_len  UUID 长度（2 或 16）
  *
  * @return true 匹配成功
- */
+
+ * @note UUID32 (uuid_len=4) is not supported yet. Only 2 or 16 accepted.
+ *       UUID uses little-endian byte order (BLE on-air format). */
 bool bles_filter_uuid_match( const uint8_t *p_adv, uint16_t adv_len,
                              const uint8_t *p_uuid, uint8_t uuid_len );
 

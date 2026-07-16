@@ -168,21 +168,21 @@ static void test_append_254( void )
 static void test_filter_uuid16( void )
 {
     uint8_t adv[] = { 0x05, 0x03, 0x0D, 0x18, 0x0A, 0x18 };
-    uint16_t u1 = 0x180D;
-    uint16_t u2 = 0x180A;
-    uint16_t u3 = 0xFFFF;
+    uint8_t u1[] = { 0x0D, 0x18 };
+    uint8_t u2[] = { 0x0A, 0x18 };
+    uint8_t u3[] = { 0xFF, 0xFF };
 
-    RUN( "uuid16 ok", true, bles_filter_uuid_match( adv, sizeof(adv), (const uint8_t*)&u1, 2 ) );
-    RUN( "uuid16 multi", true, bles_filter_uuid_match( adv, sizeof(adv), (const uint8_t*)&u2, 2 ) );
-    RUN( "uuid16 fail", false, bles_filter_uuid_match( adv, sizeof(adv), (const uint8_t*)&u3, 2 ) );
+    RUN( "uuid16 ok", true, bles_filter_uuid_match( adv, sizeof(adv), u1, 2 ) );
+    RUN( "uuid16 multi", true, bles_filter_uuid_match( adv, sizeof(adv), u2, 2 ) );
+    RUN( "uuid16 fail", false, bles_filter_uuid_match( adv, sizeof(adv), u3, 2 ) );
 }
 
 static void test_filter_uuid_incomplete( void )
 {
     uint8_t adv[] = { 0x05, 0x02, 0x0D, 0x18, 0xEE, 0xFF };
-    uint16_t u = 0xFFEE;
+    uint8_t u[] = { 0xEE, 0xFF };
 
-    RUN( "uuid16 incomplete", true, bles_filter_uuid_match( adv, sizeof(adv), (const uint8_t*)&u, 2 ) );
+    RUN( "uuid16 incomplete", true, bles_filter_uuid_match( adv, sizeof(adv), u, 2 ) );
 }
 
 static void test_filter_uuid_null( void )
@@ -198,6 +198,116 @@ static void test_filter_uuid_bad_len( void )
     uint8_t u[4] = { 0 };
 
     RUN( "uuid bad len 4", false, bles_filter_uuid_match( adv, sizeof(adv), u, 4 ) );
+}
+
+/* ---------- uuid128 ---------- */
+
+static void test_filter_uuid128_complete( void )
+{
+    uint8_t uuid[] =
+    {
+        0x01,0x02,0x03,0x04, 0x05,0x06,0x07,0x08,
+        0x09,0x0A,0x0B,0x0C, 0x0D,0x0E,0x0F,0x10,
+    };
+    uint8_t adv[] =
+    {
+        0x11, 0x07,
+        0x01,0x02,0x03,0x04, 0x05,0x06,0x07,0x08,
+        0x09,0x0A,0x0B,0x0C, 0x0D,0x0E,0x0F,0x10,
+    };
+
+    RUN( "uuid128 complete ok", true, bles_filter_uuid_match( adv, sizeof(adv), uuid, 16 ) );
+}
+
+static void test_filter_uuid128_incomplete( void )
+{
+    uint8_t uuid[] =
+    {
+        0x01,0x02,0x03,0x04, 0x05,0x06,0x07,0x08,
+        0x09,0x0A,0x0B,0x0C, 0x0D,0x0E,0x0F,0x10,
+    };
+    uint8_t adv[] =
+    {
+        0x11, 0x06,
+        0x01,0x02,0x03,0x04, 0x05,0x06,0x07,0x08,
+        0x09,0x0A,0x0B,0x0C, 0x0D,0x0E,0x0F,0x10,
+    };
+
+    RUN( "uuid128 incomplete ok", true, bles_filter_uuid_match( adv, sizeof(adv), uuid, 16 ) );
+}
+
+static void test_filter_uuid128_miss( void )
+{
+    uint8_t uuid[] =
+    {
+        0xFF,0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF,0xFF,
+        0xFF,0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF,0xFF,
+    };
+    uint8_t adv[] =
+    {
+        0x11, 0x07,
+        0x01,0x02,0x03,0x04, 0x05,0x06,0x07,0x08,
+        0x09,0x0A,0x0B,0x0C, 0x0D,0x0E,0x0F,0x10,
+    };
+
+    RUN( "uuid128 miss", false, bles_filter_uuid_match( adv, sizeof(adv), uuid, 16 ) );
+}
+
+static void test_filter_uuid128_multi( void )
+{
+    uint8_t uuid_a[] =
+    {
+        0x01,0x02,0x03,0x04, 0x05,0x06,0x07,0x08,
+        0x09,0x0A,0x0B,0x0C, 0x0D,0x0E,0x0F,0x10,
+    };
+    uint8_t uuid_b[] =
+    {
+        0xAA,0xBB,0xCC,0xDD, 0xEE,0xFF,0x00,0x11,
+        0x22,0x33,0x44,0x55, 0x66,0x77,0x88,0x99,
+    };
+    uint8_t adv[] =
+    {
+        0x21, 0x07,
+        0x01,0x02,0x03,0x04, 0x05,0x06,0x07,0x08,
+        0x09,0x0A,0x0B,0x0C, 0x0D,0x0E,0x0F,0x10,
+        0xAA,0xBB,0xCC,0xDD, 0xEE,0xFF,0x00,0x11,
+        0x22,0x33,0x44,0x55, 0x66,0x77,0x88,0x99,
+    };
+
+    RUN( "uuid128 multi 1st", true, bles_filter_uuid_match( adv, sizeof(adv), uuid_a, 16 ) );
+    RUN( "uuid128 multi 2nd", true, bles_filter_uuid_match( adv, sizeof(adv), uuid_b, 16 ) );
+}
+
+/* ==================== filter core ==================== */
+
+static void test_filter_find_exist( void )
+{
+    uint8_t adv[] = { 0x02, 0x01, 0x06, 0x05, 0x09, 'T', 'E', 'S', 'T' };
+
+    RUN( "find flags ok", true,
+         bles_filter_find( adv, sizeof(adv), BLES_AD_TYPE_FLAGS, NULL, NULL ) );
+    RUN( "find name ok", true,
+         bles_filter_find( adv, sizeof(adv), BLES_AD_TYPE_COMPLETE_NAME, NULL, NULL ) );
+    RUN( "find no type", false,
+         bles_filter_find( adv, sizeof(adv), BLES_AD_TYPE_TX_POWER, NULL, NULL ) );
+}
+
+static void test_filter_malformed_trunc( void )
+{
+    uint8_t adv[] = { 0x05, 0x09, 'A' };
+
+    RUN( "malform trunc", false,
+         bles_filter_find( adv, sizeof(adv), BLES_AD_TYPE_COMPLETE_NAME, NULL, NULL ) );
+}
+
+static void test_filter_malformed_zero_len( void )
+{
+    uint8_t adv[] = { 0x02, 0x01, 0x06, 0x00, 0xFF, 0xFF };
+
+    RUN( "malform zero len flags ok", true,
+         bles_filter_find( adv, sizeof(adv), BLES_AD_TYPE_FLAGS, NULL, NULL ) );
+    RUN( "malform zero len mfr fail", false,
+         bles_filter_find( adv, sizeof(adv), BLES_AD_TYPE_MANUFACTURER, NULL, NULL ) );
 }
 
 /* ==================== name filter ==================== */
@@ -280,10 +390,15 @@ static void test_ibeacon_build( void )
 
 static void test_ibeacon_null( void )
 {
+    uint8_t buf[31];
+    bles_adv_builder_t b;
     bles_adv_ibeacon_params_t p = { 0 };
 
     RUN( "ib null builder", false, bles_adv_ibeacon_build( NULL, &p ) );
-    RUN( "ib null params", false, bles_adv_ibeacon_build( NULL, NULL ) );
+
+    bles_adv_builder_init( &b, buf, sizeof( buf ) );
+    RUN( "ib null params", false, bles_adv_ibeacon_build( &b, NULL ) );
+    RUN( "ib null params len", 0, bles_adv_get_len( &b ) );
 }
 
 static void test_ibeacon_non_empty( void )
@@ -342,6 +457,17 @@ int main( void )
     test_filter_uuid_incomplete();
     test_filter_uuid_null();
     test_filter_uuid_bad_len();
+
+    printf( "\n=== uuid128 ===\n" );
+    test_filter_uuid128_complete();
+    test_filter_uuid128_incomplete();
+    test_filter_uuid128_miss();
+    test_filter_uuid128_multi();
+
+    printf( "\n=== filter core ===\n" );
+    test_filter_find_exist();
+    test_filter_malformed_trunc();
+    test_filter_malformed_zero_len();
 
     printf( "\n=== name filter ===\n" );
     test_filter_name_exact();
