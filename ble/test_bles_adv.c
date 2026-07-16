@@ -6,6 +6,7 @@
 
 #include "bles_adv.h"
 #include "bles_adv_ibeacon.h"
+#include "bles_filter_name.h"
 
 static int g_pass = 0;
 static int g_fail = 0;
@@ -159,6 +160,57 @@ static void test_append_254( void )
     RUN( "append 254 len", 256, bles_adv_get_len( &b ) );
 }
 
+/* ==================== name filter ==================== */
+
+static void test_filter_name_exact( void )
+{
+    uint8_t adv[] = { 0x06, 0x09, 'M', 'y', 'D', 'e', 'v' };
+
+    RUN( "name exact ok", true, bles_filter_name_match( adv, sizeof(adv), "MyDev", BLES_FILTER_NAME_EXACT ) );
+    RUN( "name exact fail", false, bles_filter_name_match( adv, sizeof(adv), "MyDe", BLES_FILTER_NAME_EXACT ) );
+    RUN( "name exact longer", false, bles_filter_name_match( adv, sizeof(adv), "MyDevice", BLES_FILTER_NAME_EXACT ) );
+}
+
+static void test_filter_name_prefix( void )
+{
+    uint8_t adv[] = { 0x06, 0x09, 'M', 'y', 'D', 'e', 'v' };
+
+    RUN( "name prefix ok", true, bles_filter_name_match( adv, sizeof(adv), "My", BLES_FILTER_NAME_PREFIX ) );
+    RUN( "name prefix exact", true, bles_filter_name_match( adv, sizeof(adv), "MyDev", BLES_FILTER_NAME_PREFIX ) );
+    RUN( "name prefix fail", false, bles_filter_name_match( adv, sizeof(adv), "You", BLES_FILTER_NAME_PREFIX ) );
+}
+
+static void test_filter_name_contains( void )
+{
+    uint8_t adv[] = { 0x06, 0x09, 'M', 'y', 'D', 'e', 'v' };
+
+    RUN( "name contains ok", true, bles_filter_name_match( adv, sizeof(adv), "yDe", BLES_FILTER_NAME_CONTAINS ) );
+    RUN( "name contains fail", false, bles_filter_name_match( adv, sizeof(adv), "zzz", BLES_FILTER_NAME_CONTAINS ) );
+}
+
+static void test_filter_name_short( void )
+{
+    uint8_t adv[] = { 0x04, 0x08, 'A', 'B', 'C' };
+    uint8_t adv2[] = { 0x06, 0x09, 'A', 'B', 'C', 'D', 'E' };
+
+    RUN( "name short ok", true, bles_filter_name_match( adv, sizeof(adv), "ABC", BLES_FILTER_NAME_EXACT ) );
+    RUN( "name short+complete", true, bles_filter_name_match( adv2, sizeof(adv2), "ABCDE", BLES_FILTER_NAME_EXACT ) );
+}
+
+static void test_filter_name_null( void )
+{
+    uint8_t adv[] = { 0x06, 0x09, 'M', 'y', 'D', 'e', 'v' };
+
+    RUN( "name null", false, bles_filter_name_match( adv, sizeof(adv), NULL, BLES_FILTER_NAME_EXACT ) );
+}
+
+static void test_filter_name_empty( void )
+{
+    uint8_t adv[] = { 0x06, 0x09, 'M', 'y', 'D', 'e', 'v' };
+
+    RUN( "name empty", false, bles_filter_name_match( adv, sizeof(adv), "", BLES_FILTER_NAME_EXACT ) );
+}
+
 static void test_ibeacon_build( void )
 {
     uint8_t buf[31];
@@ -242,6 +294,14 @@ int main( void )
     test_append_no_room();
     test_append_255();
     test_append_254();
+
+    printf( "\n=== name filter ===\n" );
+    test_filter_name_exact();
+    test_filter_name_prefix();
+    test_filter_name_contains();
+    test_filter_name_short();
+    test_filter_name_null();
+    test_filter_name_empty();
 
     printf( "\n=== ibeacon ===\n" );
     test_ibeacon_build();
