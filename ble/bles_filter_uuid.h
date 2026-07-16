@@ -31,7 +31,8 @@ extern "C" {
  * @return true ∆•≈‰≥…π¶
 
  * @note UUID32 (uuid_len=4) is not supported yet. Only 2 or 16 accepted.
- *       UUID uses little-endian byte order (BLE on-air format). */
+ *       UUID uses little-endian byte order (BLE on-air format).
+ */
 bool bles_filter_uuid_match( const uint8_t *p_adv, uint16_t adv_len,
                              const uint8_t *p_uuid, uint8_t uuid_len );
 
