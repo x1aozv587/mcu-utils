@@ -8,6 +8,7 @@
 #include "bles_adv_ibeacon.h"
 #include "bles_filter_name.h"
 #include "bles_filter_uuid.h"
+#include "bles_filter_manufacturer.h"
 
 static int g_pass = 0;
 static int g_fail = 0;
@@ -361,6 +362,45 @@ static void test_filter_name_empty( void )
     RUN( "name empty", false, bles_filter_name_match( adv, sizeof(adv), "", BLES_FILTER_NAME_EXACT ) );
 }
 
+/* ==================== manufacturer filter ==================== */
+
+static void test_filter_manu_exact( void )
+{
+    uint8_t adv[] = { 0x07, 0xFF, 0x4C, 0x00, 0x02, 0x15, 0xAA, 0xBB };
+    uint8_t apple[] = { 0x4C, 0x00 };
+    uint8_t ibeacon[] = { 0x4C, 0x00, 0x02, 0x15 };
+    uint8_t custom[] = { 0xAA, 0xBB };
+    uint8_t no[] = { 0xFF, 0xFF };
+
+    RUN( "manu apple", true, bles_filter_manufacturer_match( adv, sizeof(adv), apple, 2 ) );
+    RUN( "manu ibeacon", true, bles_filter_manufacturer_match( adv, sizeof(adv), ibeacon, 4 ) );
+    RUN( "manu tail", true, bles_filter_manufacturer_match( adv, sizeof(adv), custom, 2 ) );
+    RUN( "manu fail", false, bles_filter_manufacturer_match( adv, sizeof(adv), no, 2 ) );
+}
+
+static void test_filter_manu_too_long( void )
+{
+    uint8_t adv[] = { 0x04, 0xFF, 0xAA, 0xBB, 0xCC };
+    uint8_t big[10] = { 0xAA,0xBB,0xCC,0xDD,0xEE,0xFF,0x00,0x11,0x22,0x33 };
+
+    RUN( "manu too long", false, bles_filter_manufacturer_match( adv, sizeof(adv), big, 10 ) );
+}
+
+static void test_filter_manu_null( void )
+{
+    uint8_t adv[] = { 0x04, 0xFF, 0xAA, 0xBB, 0xCC };
+
+    RUN( "manu null", false, bles_filter_manufacturer_match( adv, sizeof(adv), NULL, 2 ) );
+}
+
+static void test_filter_manu_len0( void )
+{
+    uint8_t adv[] = { 0x04, 0xFF, 0xAA, 0xBB, 0xCC };
+    uint8_t d[] = { 0xAA };
+
+    RUN( "manu len 0", false, bles_filter_manufacturer_match( adv, sizeof(adv), d, 0 ) );
+}
+
 /* ==================== ibeacon ==================== */
 
 static void test_ibeacon_build( void )
@@ -476,6 +516,12 @@ int main( void )
     test_filter_name_short();
     test_filter_name_null();
     test_filter_name_empty();
+
+    printf( "\n=== manufacturer filter ===\n" );
+    test_filter_manu_exact();
+    test_filter_manu_too_long();
+    test_filter_manu_null();
+    test_filter_manu_len0();
 
     printf( "\n=== ibeacon ===\n" );
     test_ibeacon_build();
