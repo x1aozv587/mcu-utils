@@ -9,6 +9,7 @@ typedef struct
 
 static logs_t logs;
 
+/**< 加锁，lock 为 NULL 时等效空操作 */
 static void logs_lock(void)
 {
     if( logs.opt.lock )
@@ -17,6 +18,7 @@ static void logs_lock(void)
     }
 }
 
+/**< 解锁，unlock 为 NULL 时等效空操作 */
 static void logs_unlock(void)
 {
     if( logs.opt.unlock )
@@ -25,7 +27,16 @@ static void logs_unlock(void)
     }
 }
 
-/**< 格式化输出 */
+/**
+ * @brief 格式化日志并输出
+ *
+ * @param flag           日志 FLAG，透传给 write 回调
+ * @param p_tag          模块标签
+ * @param p_fmt          格式化字符串
+ * @param p_params_list  可变参数列表
+ *
+ * @return vsnprintf 返回值（不包含 tag 部分的长度），<0 表示格式化失败
+ */
 static int logs_printf( uint32_t flag, const char * p_tag, const char* p_fmt, va_list p_params_list )
 {
     char buf[LOGS_FRAME_MAX_SIZE + 1] = {0};
@@ -76,100 +87,84 @@ mu_status_t logs_init( logs_opt_t *p_opt )
     return MU_OK;
 }
 
-mu_status_t logs_error( logs_mask_t mask, const char * p_tag, const char *p_fmt, ... )
+void logs_error( logs_mask_t mask, const char * p_tag, const char *p_fmt, ... )
 {
-    int ret = 0;
-
     /**< 日志未使能 */
     if( ( logs.levels.enabled & LOGS_EN_MASK ) != LOGS_EN_MASK )
     {
-        return MU_ERR_CONFIG_NOT_ENABLED;
+        return;
     }
 
     /**< 当前模块没有打开 或者 当前等级未打开 */
     if( (( logs.levels.enabled & mask ) == 0) || (( logs.levels.error & mask ) == 0) )
     {
-        return MU_ERR_SWITCH_NOT_ENABLED;
+        return;
     }
 
     va_list params_list;
     va_start(params_list, p_fmt);
-    ret = logs_printf( LOGS_FLAG_ERROR, p_tag, p_fmt, params_list );
+    logs_printf( LOGS_FLAG_ERROR, p_tag, p_fmt, params_list );
     va_end(params_list);
-
-    return ret ? MU_OK : MU_ERR_INTERNAL;
 }
 
-mu_status_t logs_warn( logs_mask_t mask, const char *p_tag, const char *p_fmt, ... )
+void logs_warn( logs_mask_t mask, const char *p_tag, const char *p_fmt, ... )
 {
-    int ret = 0;
-
     /**< 日志未使能 */
     if( ( logs.levels.enabled & LOGS_EN_MASK ) != LOGS_EN_MASK )
     {
-        return MU_ERR_CONFIG_NOT_ENABLED;
+        return;
     }
 
     /**< 当前模块没有打开 或者 当前等级未打开 */
     if( (( logs.levels.enabled & mask ) == 0) || (( logs.levels.warning & mask ) == 0) )
     {
-        return MU_ERR_SWITCH_NOT_ENABLED;
+        return;
     }
 
     va_list params_list;
     va_start(params_list, p_fmt);
-    ret = logs_printf( LOGS_FLAG_WARN, p_tag, p_fmt, params_list );
+    logs_printf( LOGS_FLAG_WARN, p_tag, p_fmt, params_list );
     va_end(params_list);
-
-    return ret ? MU_OK : MU_ERR_INTERNAL;
 }
 
-mu_status_t logs_info( logs_mask_t mask, const char *p_tag, const char *p_fmt, ... )
+void logs_info( logs_mask_t mask, const char *p_tag, const char *p_fmt, ... )
 {
-    int ret = 0;
-
     /**< 日志未使能 */
     if( ( logs.levels.enabled & LOGS_EN_MASK ) != LOGS_EN_MASK )
     {
-        return MU_ERR_CONFIG_NOT_ENABLED;
+        return;
     }
 
     /**< 当前模块没有打开 或者 当前等级未打开 */
     if( (( logs.levels.enabled & mask ) == 0) || (( logs.levels.info & mask ) == 0) )
     {
-        return MU_ERR_SWITCH_NOT_ENABLED;
+        return;
     }
 
     va_list params_list;
     va_start(params_list, p_fmt);
-    ret = logs_printf( LOGS_FLAG_INFO, p_tag, p_fmt, params_list );
+    logs_printf( LOGS_FLAG_INFO, p_tag, p_fmt, params_list );
     va_end(params_list);
-
-    return ret ? MU_OK : MU_ERR_INTERNAL;
 }
 
-mu_status_t logs_debug( logs_mask_t mask, const char *p_tag, const char *p_fmt, ... )
+void logs_debug( logs_mask_t mask, const char *p_tag, const char *p_fmt, ... )
 {
-    int ret = 0;
-
     /**< 日志未使能 */
     if( ( logs.levels.enabled & LOGS_EN_MASK ) != LOGS_EN_MASK )
     {
-        return MU_ERR_CONFIG_NOT_ENABLED;
+        return;
     }
 
     /**< 当前模块没有打开 或者 当前等级未打开 */
     if( (( logs.levels.enabled & mask ) == 0) || (( logs.levels.debug & mask ) == 0) )
     {
-        return MU_ERR_SWITCH_NOT_ENABLED;
+        return;
     }
 
     va_list params_list;
     va_start(params_list, p_fmt);
-    ret = logs_printf( LOGS_FLAG_DEBUG, p_tag, p_fmt, params_list );
+    logs_printf( LOGS_FLAG_DEBUG, p_tag, p_fmt, params_list );
     va_end(params_list);
-
-    return ret ? MU_OK : MU_ERR_INTERNAL;
 }
 
 void logs_set_bitmap( logs_mask_t mask, uint8_t level )
