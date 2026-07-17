@@ -74,6 +74,36 @@ static int logs_printf( uint32_t flag, const char * p_tag, const char* p_fmt, va
     return ret;
 }
 
+/**
+ * @brief 日志输出核心：全局使能检查 → 模块/等级过滤 → 格式化输出
+ *
+ * @param mask        模块位掩码
+ * @param flag        日志 FLAG
+ * @param level_bits  对应等级的位掩码字段
+ * @param p_tag       模块标签
+ * @param p_fmt       格式化字符串
+ * @param p_args      可变参数列表
+ */
+static void logs_output( logs_mask_t mask, uint32_t flag, logs_mask_t level_bits,
+                         const char *p_tag, const char *p_fmt, va_list p_args )
+{
+    /**< 日志未使能 */
+    if( ( logs.levels.enabled & LOGS_EN_MASK ) != LOGS_EN_MASK )
+    {
+        return;
+    }
+
+    /**< 当前模块没有打开 或者 当前等级未打开 */
+    if( (( logs.levels.enabled & mask ) == 0) || (( level_bits & mask ) == 0) )
+    {
+        return;
+    }
+
+    logs_printf( flag, p_tag, p_fmt, p_args );
+}
+
+/* ==================== 初始化函数 ==================== */
+
 mu_status_t logs_init( logs_opt_t *p_opt )
 {
     if( (p_opt == NULL) || (p_opt->write == NULL) )
@@ -87,85 +117,41 @@ mu_status_t logs_init( logs_opt_t *p_opt )
     return MU_OK;
 }
 
+/* ==================== 对外接口 ==================== */
+
 void logs_error( logs_mask_t mask, const char * p_tag, const char *p_fmt, ... )
 {
-    /**< 日志未使能 */
-    if( ( logs.levels.enabled & LOGS_EN_MASK ) != LOGS_EN_MASK )
-    {
-        return;
-    }
-
-    /**< 当前模块没有打开 或者 当前等级未打开 */
-    if( (( logs.levels.enabled & mask ) == 0) || (( logs.levels.error & mask ) == 0) )
-    {
-        return;
-    }
-
     va_list params_list;
     va_start(params_list, p_fmt);
-    logs_printf( LOGS_FLAG_ERROR, p_tag, p_fmt, params_list );
+    logs_output( mask, LOGS_FLAG_ERROR, logs.levels.error, p_tag, p_fmt, params_list );
     va_end(params_list);
 }
 
 void logs_warn( logs_mask_t mask, const char *p_tag, const char *p_fmt, ... )
 {
-    /**< 日志未使能 */
-    if( ( logs.levels.enabled & LOGS_EN_MASK ) != LOGS_EN_MASK )
-    {
-        return;
-    }
-
-    /**< 当前模块没有打开 或者 当前等级未打开 */
-    if( (( logs.levels.enabled & mask ) == 0) || (( logs.levels.warning & mask ) == 0) )
-    {
-        return;
-    }
-
     va_list params_list;
     va_start(params_list, p_fmt);
-    logs_printf( LOGS_FLAG_WARN, p_tag, p_fmt, params_list );
+    logs_output( mask, LOGS_FLAG_WARN, logs.levels.warning, p_tag, p_fmt, params_list );
     va_end(params_list);
 }
 
 void logs_info( logs_mask_t mask, const char *p_tag, const char *p_fmt, ... )
 {
-    /**< 日志未使能 */
-    if( ( logs.levels.enabled & LOGS_EN_MASK ) != LOGS_EN_MASK )
-    {
-        return;
-    }
-
-    /**< 当前模块没有打开 或者 当前等级未打开 */
-    if( (( logs.levels.enabled & mask ) == 0) || (( logs.levels.info & mask ) == 0) )
-    {
-        return;
-    }
-
     va_list params_list;
     va_start(params_list, p_fmt);
-    logs_printf( LOGS_FLAG_INFO, p_tag, p_fmt, params_list );
+    logs_output( mask, LOGS_FLAG_INFO, logs.levels.info, p_tag, p_fmt, params_list );
     va_end(params_list);
 }
 
 void logs_debug( logs_mask_t mask, const char *p_tag, const char *p_fmt, ... )
 {
-    /**< 日志未使能 */
-    if( ( logs.levels.enabled & LOGS_EN_MASK ) != LOGS_EN_MASK )
-    {
-        return;
-    }
-
-    /**< 当前模块没有打开 或者 当前等级未打开 */
-    if( (( logs.levels.enabled & mask ) == 0) || (( logs.levels.debug & mask ) == 0) )
-    {
-        return;
-    }
-
     va_list params_list;
     va_start(params_list, p_fmt);
-    logs_printf( LOGS_FLAG_DEBUG, p_tag, p_fmt, params_list );
+    logs_output( mask, LOGS_FLAG_DEBUG, logs.levels.debug, p_tag, p_fmt, params_list );
     va_end(params_list);
 }
+
+/* ==================== bitmap 配置 ==================== */
 
 void logs_set_bitmap( logs_mask_t mask, uint8_t level )
 {
