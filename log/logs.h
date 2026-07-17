@@ -72,7 +72,8 @@ typedef struct
     logs_mask_t    debug;       /**< DEBUG 等级使能 */
 } logs_level_t;
 
-/**< 日志输出回调
+/**
+ * @brief 日志输出回调函数类型
  *
  * @param flag   日志 FLAG (LOGS_FLAG_ERROR / WARN / INFO / DEBUG)
  * @param p_data 格式化后的日志数据
@@ -95,12 +96,79 @@ typedef struct
 
 /* ==================== 对外接口 ==================== */
 
+/**
+ * @brief 初始化日志模块
+ *
+ * @param p_opt 日志配置选项（write 为必选，lock/unlock 为可选）
+ *
+ * @return MU_OK 成功，MU_ERR_NULL_POINT 表示 p_opt 或 write 为空
+ */
 mu_status_t logs_init( logs_opt_t *p_opt );
+
+/**
+ * @brief 输出 ERROR 等级日志
+ *
+ * @param mask   模块位掩码（每个模块占用 1 bit）
+ * @param p_tag  模块标签字符串，输出格式为 [TAG]
+ * @param p_fmt  格式化字符串
+ * @param ...    可变参数
+ *
+ * @note 日志未使能或该模块/等级未打开时，函数静默返回不做任何操作
+ */
 void logs_error( logs_mask_t mask, const char *p_tag, const char *p_fmt, ... );
+
+/**
+ * @brief 输出 WARN 等级日志
+ *
+ * @param mask   模块位掩码
+ * @param p_tag  模块标签字符串
+ * @param p_fmt  格式化字符串
+ * @param ...    可变参数
+ *
+ * @note 同 logs_error
+ */
 void logs_warn( logs_mask_t mask, const char *p_tag, const char *p_fmt, ... );
+
+/**
+ * @brief 输出 INFO 等级日志
+ *
+ * @param mask   模块位掩码
+ * @param p_tag  模块标签字符串
+ * @param p_fmt  格式化字符串
+ * @param ...    可变参数
+ *
+ * @note 同 logs_error
+ */
 void logs_info( logs_mask_t mask, const char *p_tag, const char *p_fmt, ... );
+
+/**
+ * @brief 输出 DEBUG 等级日志
+ *
+ * @param mask   模块位掩码
+ * @param p_tag  模块标签字符串
+ * @param p_fmt  格式化字符串
+ * @param ...    可变参数
+ *
+ * @note 同 logs_error
+ */
 void logs_debug( logs_mask_t mask, const char *p_tag, const char *p_fmt, ... );
+
+/**
+ * @brief 设置指定模块的日志等级
+ *
+ * @param mask  模块位掩码
+ * @param level 目标等级，取值 LOGS_LEVEL_ENABLED / ERROR / WARN / INFO / DEBUG
+ *
+ * @note 设置为某等级时，低于该等级的位也会被打开，高于该等级的位会被清除
+ *       例如设为 WARN 时，ERROR 也会输出，但 INFO/DEBUG 不会输出
+ */
 void logs_set_bitmap( logs_mask_t mask, uint8_t level );
+
+/**
+ * @brief 清除指定模块的所有日志等级位
+ *
+ * @param mask 模块位掩码
+ */
 void logs_clear_bitmap( logs_mask_t mask );
 
 /* ==================== LOG FLAG ==================== */
