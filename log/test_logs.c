@@ -26,9 +26,6 @@ static int g_fail = 0;
         if( _ok ) g_pass++; else g_fail++; \
     } while(0)
 
-/**< 排除 bit[0] 的全模块掩码 */
-#define ALL_MASK  ((logs_mask_t)(~LOGS_EN_MASK))
-
 /* ==================== 测试基础设施 ==================== */
 
 static char     g_cap_buf[1024];
@@ -83,6 +80,7 @@ static void test_reset( void )
 
     logs_init( &opt );
     logs_clear_bitmap( LOGS_ALL_MASK );
+    logs_clear_bitmap( LOGS_EN_MASK );
 }
 
 /* ==================== 初始化测试 ==================== */
@@ -109,7 +107,7 @@ static void test_init( void )
 static void test_output_levels( void )
 {
     test_reset();
-    logs_set_bitmap( LOGS_ALL_MASK, LOGS_LEVEL_ENABLED );
+    logs_set_bitmap( LOGS_EN_MASK, LOGS_LEVEL_ENABLED );
     logs_set_bitmap( LOGS_ALL_MASK, LOGS_LEVEL_DEBUG );
 
     /**< ERROR */
@@ -142,6 +140,7 @@ static void test_output_levels( void )
 static void test_filter_error( void )
 {
     test_reset();
+    logs_set_bitmap( LOGS_EN_MASK, LOGS_LEVEL_ENABLED );
     logs_set_bitmap( LOGS_ALL_MASK, LOGS_LEVEL_ERROR );
 
     logs_error( LOGS_ALL_MASK, "T", "e" );
@@ -163,6 +162,7 @@ static void test_filter_error( void )
 static void test_filter_warn( void )
 {
     test_reset();
+    logs_set_bitmap( LOGS_EN_MASK, LOGS_LEVEL_ENABLED );
     logs_set_bitmap( LOGS_ALL_MASK, LOGS_LEVEL_WARN );
 
     g_write_cnt = 0;
@@ -181,6 +181,7 @@ static void test_filter_warn( void )
 static void test_filter_debug( void )
 {
     test_reset();
+    logs_set_bitmap( LOGS_EN_MASK, LOGS_LEVEL_ENABLED );
     logs_set_bitmap( LOGS_ALL_MASK, LOGS_LEVEL_DEBUG );
 
     g_write_cnt = 0;
@@ -245,7 +246,7 @@ static void test_global_enable( void )
     test_reset();
 
     /**< 未设置全局使能位 */
-    logs_set_bitmap( ALL_MASK, LOGS_LEVEL_DEBUG );
+    logs_set_bitmap( LOGS_ALL_MASK, LOGS_LEVEL_DEBUG );
     g_write_cnt = 0;
     logs_error( LOGS_ALL_MASK, "T", "msg" );
     RUN( "global off", 0, (int)g_write_cnt );

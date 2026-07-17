@@ -49,7 +49,7 @@ typedef uint32_t  logs_mask_t;
 #define LOGS_EN_MASK  ((logs_mask_t)1<<0UL)
 
 /**< 全模块掩码（不含 bit[0] 使能位） */
-#define LOGS_ALL_MASK (0xFFFFFFFFUL)
+#define LOGS_ALL_MASK ((logs_mask_t)(~LOGS_EN_MASK))
 
 /**
  * @brief 日志等级
