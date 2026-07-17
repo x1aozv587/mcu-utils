@@ -76,10 +76,23 @@ typedef struct
  * @brief 日志输出回调函数类型
  *
  * @param flag   日志 FLAG (LOGS_FLAG_ERROR / WARN / INFO / DEBUG)
- * @param p_data 格式化后的日志数据
+ * @param p_data 已完成格式化的日志数据
  * @param len    数据长度
  *
  * @return 实际写入的字节数
+ *
+ * @note
+ * 数据已经由日志库完成格式化，实现者需要做的仅仅是将数据发送到
+ * 对应的输出设备上。常见实现方式：
+ *
+ * - 单个 Backend：直接调用相应输出函数
+ *   (UART / RTT / USB / BLE 等)，根据 flag 做等级相关处理
+ *
+ * - 多个 Backend：在回调内部依次调用多个输出函数，实现一份日志
+ *   同时输出到多个设备
+ *
+ * - 注意，日志库不会在格式化完成后再次格式化，也不保留 va_list，
+ *   因此不存在 va_copy 的问题
  */
 typedef uint32_t  (*logs_write_t)(uint32_t flag, uint8_t *p_data, uint32_t len);
 
@@ -108,9 +121,9 @@ mu_status_t logs_init( logs_opt_t *p_opt );
 /**
  * @brief 输出 ERROR 等级日志
  *
- * @param mask   模块位掩码（每个模块占用 1 bit）
- * @param p_tag  模块标签字符串，输出格式为 [TAG]
- * @param p_fmt  格式化字符串
+ * @param mask   模块位掩码
+ * @param p_tag  模块标签字符串，输出格式为 [TAG]（可为 NULL，输出 [NULL]）
+ * @param p_fmt  格式化字符串（为 NULL 时静默返回）
  * @param ...    可变参数
  *
  * @note 日志未使能或该模块/等级未打开时，函数静默返回不做任何操作
