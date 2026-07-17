@@ -26,7 +26,7 @@ static int g_fail = 0;
         if( _ok ) g_pass++; else g_fail++; \
     } while(0)
 
-/* ==================== 测试基础设施 ==================== */
+/* ==================== test infra ==================== */
 
 static char     g_cap_buf[1024];
 static uint32_t g_cap_len;
@@ -83,7 +83,7 @@ static void test_reset( void )
     logs_clear_bitmap( LOGS_EN_MASK );
 }
 
-/* ==================== 初始化测试 ==================== */
+/* ==================== init ==================== */
 
 static void test_init( void )
 {
@@ -102,7 +102,7 @@ static void test_init( void )
     RUN( "init ok", MU_OK, logs_init( &opt ) );
 }
 
-/* ==================== 基本输出测试 ==================== */
+/* ==================== output levels ==================== */
 
 static void test_output_levels( void )
 {
@@ -110,32 +110,28 @@ static void test_output_levels( void )
     logs_set_bitmap( LOGS_EN_MASK, LOGS_LEVEL_ENABLED );
     logs_set_bitmap( LOGS_ALL_MASK, LOGS_LEVEL_DEBUG );
 
-    /**< ERROR */
     g_write_cnt = 0;
     logs_error( LOGS_ALL_MASK, "TAG", "err msg" );
     RUN( "output error flag", LOGS_FLAG_ERROR, (int)g_cap_flag );
     RUN_STR( "output error text", "[TAG] err msg", g_cap_buf );
 
-    /**< WARN */
     g_write_cnt = 0;
     logs_warn( LOGS_ALL_MASK, "TAG", "warn msg" );
     RUN( "output warn flag", LOGS_FLAG_WARN, (int)g_cap_flag );
     RUN_STR( "output warn text", "[TAG] warn msg", g_cap_buf );
 
-    /**< INFO */
     g_write_cnt = 0;
     logs_info( LOGS_ALL_MASK, "TAG", "info msg" );
     RUN( "output info flag", LOGS_FLAG_INFO, (int)g_cap_flag );
     RUN_STR( "output info text", "[TAG] info msg", g_cap_buf );
 
-    /**< DEBUG */
     g_write_cnt = 0;
     logs_debug( LOGS_ALL_MASK, "TAG", "dbg msg" );
     RUN( "output debug flag", LOGS_FLAG_DEBUG, (int)g_cap_flag );
     RUN_STR( "output debug text", "[TAG] dbg msg", g_cap_buf );
 }
 
-/* ==================== 等级过滤测试 ==================== */
+/* ==================== level filter ==================== */
 
 static void test_filter_error( void )
 {
@@ -193,7 +189,7 @@ static void test_filter_debug( void )
     RUN( "filter d->dbg on", 1, (int)g_write_cnt );
 }
 
-/* ==================== 模块掩码隔离测试 ==================== */
+/* ==================== module mask ==================== */
 
 #define MOD_A  ((logs_mask_t)0x02)
 #define MOD_B  ((logs_mask_t)0x04)
@@ -203,7 +199,6 @@ static void test_mask_isolation( void )
     test_reset();
     logs_set_bitmap( LOGS_EN_MASK, LOGS_LEVEL_ENABLED );
     logs_set_bitmap( MOD_A, LOGS_LEVEL_DEBUG );
-    /**< MOD_B 未使能 */
 
     g_write_cnt = 0;
     logs_error( MOD_A, "A", "msg" );
@@ -221,7 +216,6 @@ static void test_mask_independent( void )
     logs_set_bitmap( MOD_A, LOGS_LEVEL_ERROR );
     logs_set_bitmap( MOD_B, LOGS_LEVEL_DEBUG );
 
-    /**< MOD_A 只能输出 ERROR */
     g_write_cnt = 0;
     logs_error( MOD_A, "A", "e" );
     RUN( "mask indep a err", 1, (int)g_write_cnt );
@@ -230,7 +224,6 @@ static void test_mask_independent( void )
     logs_debug( MOD_A, "A", "d" );
     RUN( "mask indep a dbg", 0, (int)g_write_cnt );
 
-    /**< MOD_B 可以输出 DEBUG */
     g_write_cnt = 0;
     logs_debug( MOD_B, "B", "d" );
     RUN( "mask indep b dbg", 1, (int)g_write_cnt );
@@ -239,32 +232,29 @@ static void test_mask_independent( void )
 #undef MOD_A
 #undef MOD_B
 
-/* ==================== 全局使能测试 ==================== */
+/* ==================== global enable ==================== */
 
 static void test_global_enable( void )
 {
     test_reset();
 
-    /**< 未设置全局使能位 */
     logs_set_bitmap( LOGS_ALL_MASK, LOGS_LEVEL_DEBUG );
     g_write_cnt = 0;
     logs_error( LOGS_ALL_MASK, "T", "msg" );
     RUN( "global off", 0, (int)g_write_cnt );
 
-    /**< 设置全局使能位 */
     logs_set_bitmap( LOGS_EN_MASK, LOGS_LEVEL_ENABLED );
     g_write_cnt = 0;
     logs_error( LOGS_ALL_MASK, "T", "msg" );
     RUN( "global on", 1, (int)g_write_cnt );
 
-    /**< 清除全局使能位 */
     logs_clear_bitmap( LOGS_EN_MASK );
     g_write_cnt = 0;
     logs_error( LOGS_ALL_MASK, "T", "msg" );
     RUN( "global off again", 0, (int)g_write_cnt );
 }
 
-/* ==================== bitmap 操作测试 ==================== */
+/* ==================== bitmap ops ==================== */
 
 static void test_bitmap_set_debug( void )
 {
@@ -294,7 +284,6 @@ static void test_bitmap_upgrade( void )
     test_reset();
     logs_set_bitmap( LOGS_EN_MASK, LOGS_LEVEL_ENABLED );
 
-    /**< 先设 ERROR 再升级到 INFO */
     logs_set_bitmap( LOGS_ALL_MASK, LOGS_LEVEL_ERROR );
     logs_set_bitmap( LOGS_ALL_MASK, LOGS_LEVEL_INFO );
 
@@ -320,7 +309,6 @@ static void test_bitmap_downgrade( void )
     test_reset();
     logs_set_bitmap( LOGS_EN_MASK, LOGS_LEVEL_ENABLED );
 
-    /**< 先设 DEBUG 再降级到 WARN */
     logs_set_bitmap( LOGS_ALL_MASK, LOGS_LEVEL_DEBUG );
     logs_set_bitmap( LOGS_ALL_MASK, LOGS_LEVEL_WARN );
 
@@ -366,7 +354,7 @@ static void test_bitmap_clear( void )
     RUN( "bm clear dbg off", 0, (int)g_write_cnt );
 }
 
-/* ==================== 锁配对测试 ==================== */
+/* ==================== lock pairing ==================== */
 
 static void test_lock_pairing( void )
 {
@@ -374,7 +362,7 @@ static void test_lock_pairing( void )
     logs_set_bitmap( LOGS_EN_MASK, LOGS_LEVEL_ENABLED );
     logs_set_bitmap( LOGS_ALL_MASK, LOGS_LEVEL_DEBUG );
 
-    g_lock_cnt  = 0;
+    g_lock_cnt   = 0;
     g_unlock_cnt = 0;
 
     logs_error( LOGS_ALL_MASK, "T", "m1" );
@@ -395,7 +383,6 @@ static void test_lock_skip_on_filter( void )
     g_lock_cnt   = 0;
     g_unlock_cnt = 0;
 
-    /**< 等级未开，应该跳过 lock/unlock */
     logs_warn( LOGS_ALL_MASK, "T", "msg" );
     logs_info( LOGS_ALL_MASK, "T", "msg" );
     logs_debug( LOGS_ALL_MASK, "T", "msg" );
@@ -404,7 +391,7 @@ static void test_lock_skip_on_filter( void )
     RUN( "unlock skip count", 0, (int)g_unlock_cnt );
 }
 
-/* ==================== 虚拟多任务测试 ==================== */
+/* ==================== multi task ==================== */
 
 #define TASK_A  ((logs_mask_t)0x02)
 #define TASK_B  ((logs_mask_t)0x04)
@@ -432,8 +419,6 @@ static void test_multi_task( void )
         logs_debug( TASK_C, "C", "dbg_%d", i );
     }
 
-    /**< TASK_A=ERROR only → 1 write per round, TASK_B=WARN → 2, TASK_C=DEBUG → 4 */
-    /**< Total: 1+2+4=7 writes per round × 1000 = 7000 */
     RUN( "mt write count", 4000, (int)g_write_cnt );
     RUN( "mt lock pair", true, g_lock_cnt == g_unlock_cnt );
     RUN( "mt lock positive", true, g_lock_cnt > 0 );
@@ -443,7 +428,7 @@ static void test_multi_task( void )
 #undef TASK_B
 #undef TASK_C
 
-/* ==================== MAX SIZE 溢出测试 ==================== */
+/* ==================== overflow ==================== */
 
 static void test_overflow_tag( void )
 {
@@ -481,7 +466,7 @@ static void test_overflow_body( void )
 
 static void test_overflow_boundary( void )
 {
-    char exact_body[512 - 10];  /**< "[T] " = 4, body = 508, total ≈ 512 */
+    char exact_body[512 - 10];
 
     test_reset();
     logs_set_bitmap( LOGS_EN_MASK, LOGS_LEVEL_ENABLED );
@@ -496,7 +481,7 @@ static void test_overflow_boundary( void )
     RUN( "overflow boundary len", true, g_cap_len <= LOGS_FRAME_MAX_SIZE );
 }
 
-/* ==================== 高速压力测试 ==================== */
+/* ==================== stress ==================== */
 
 static void test_stress_single( void )
 {
@@ -563,7 +548,92 @@ static void test_stress_format( void )
     RUN( "stress fmt len ok", true, g_cap_len > 0 );
 }
 
-/* ==================== 入口 ==================== */
+/* ==================== edge cases ==================== */
+
+static void test_edge_write_null( void )
+{
+    logs_opt_t opt;
+
+    test_reset();
+    logs_set_bitmap( LOGS_EN_MASK, LOGS_LEVEL_ENABLED );
+    logs_set_bitmap( LOGS_ALL_MASK, LOGS_LEVEL_DEBUG );
+
+    opt.write  = NULL;
+    opt.lock   = my_lock;
+    opt.unlock = my_unlock;
+
+    /**< init rejects NULL write, old callback stays active */
+    RUN( "edge write null init", MU_ERR_NULL_POINT, logs_init( &opt ) );
+
+    g_write_cnt = 0;
+    logs_error( LOGS_ALL_MASK, "T", "msg" );
+    RUN( "edge write null cnt", 1, (int)g_write_cnt );
+}
+
+static void test_edge_null_tag( void )
+{
+    test_reset();
+    logs_set_bitmap( LOGS_EN_MASK, LOGS_LEVEL_ENABLED );
+    logs_set_bitmap( LOGS_ALL_MASK, LOGS_LEVEL_DEBUG );
+
+    g_write_cnt = 0;
+    logs_error( LOGS_ALL_MASK, NULL, "body" );
+    RUN( "edge null tag count", 1, (int)g_write_cnt );
+    RUN_STR( "edge null tag text", "[NULL] body", g_cap_buf );
+}
+
+static void test_edge_null_fmt( void )
+{
+    test_reset();
+    logs_set_bitmap( LOGS_EN_MASK, LOGS_LEVEL_ENABLED );
+    logs_set_bitmap( LOGS_ALL_MASK, LOGS_LEVEL_DEBUG );
+
+    g_write_cnt = 0;
+    logs_error( LOGS_ALL_MASK, "T", NULL );
+    RUN( "edge null fmt count", 0, (int)g_write_cnt );
+}
+
+static uint32_t my_write_zero( uint32_t flag, uint8_t *p_data, uint32_t len )
+{
+    ( void )p_data;
+    ( void )len;
+    g_write_cnt++;
+    g_cap_flag = flag;
+    return 0;
+}
+
+static void test_edge_write_zero( void )
+{
+    logs_opt_t opt;
+
+    test_reset();
+    logs_set_bitmap( LOGS_EN_MASK, LOGS_LEVEL_ENABLED );
+    logs_set_bitmap( LOGS_ALL_MASK, LOGS_LEVEL_DEBUG );
+
+    opt.write  = my_write_zero;
+    opt.lock   = my_lock;
+    opt.unlock = my_unlock;
+    logs_init( &opt );
+
+    g_write_cnt = 0;
+    logs_error( LOGS_ALL_MASK, "T", "msg" );
+    RUN( "edge write zero cnt", 1, (int)g_write_cnt );
+    RUN( "edge write zero flag", LOGS_FLAG_ERROR, (int)g_cap_flag );
+}
+
+static void test_edge_illegal_level( void )
+{
+    test_reset();
+    logs_set_bitmap( LOGS_EN_MASK, LOGS_LEVEL_ENABLED );
+    logs_set_bitmap( LOGS_ALL_MASK, LOGS_LEVEL_DEBUG );
+
+    g_write_cnt = 0;
+    logs_set_bitmap( LOGS_ALL_MASK, 255 );
+    logs_error( LOGS_ALL_MASK, "T", "still works" );
+    RUN( "edge illegal lv cnt", 1, (int)g_write_cnt );
+}
+
+/* ==================== main ==================== */
 
 int main( void )
 {
@@ -627,6 +697,13 @@ int main( void )
 
     printf( "\n=== stress format ===\n" );
     test_stress_format();
+
+    printf( "\n=== edge cases ===\n" );
+    test_edge_write_null();
+    test_edge_null_tag();
+    test_edge_null_fmt();
+    test_edge_write_zero();
+    test_edge_illegal_level();
 
     printf( "\n========================================\n" );
     printf( "passed: %d  failed: %d\n", g_pass, g_fail );

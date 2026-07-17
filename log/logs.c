@@ -31,8 +31,8 @@ static void logs_unlock(void)
  * @brief 格式化日志并输出
  *
  * @param flag           日志 FLAG，透传给 write 回调
- * @param p_tag          模块标签
- * @param p_fmt          格式化字符串
+ * @param p_tag          模块标签（为 NULL 时使用 "NULL"）
+ * @param p_fmt          格式化字符串（必须非 NULL，调用方已检查）
  * @param p_params_list  可变参数列表
  *
  * @return vsnprintf 返回值（不包含 tag 部分的长度），<0 表示格式化失败
@@ -47,7 +47,12 @@ static int logs_printf( uint32_t flag, const char * p_tag, const char* p_fmt, va
 
     logs_lock();
 
-    /**< 填写 `tag` 并检查是否溢出 */
+    /**< 填写 `tag` 并检查是否溢出，tag 为 NULL 时显示 "NULL" */
+    if( p_tag == NULL )
+    {
+        p_tag = "NULL";
+    }
+
     offset = snprintf( buf, LOGS_FRAME_MAX_SIZE, "[%s] ", p_tag );
     if( (offset < 0) || (offset > LOGS_FRAME_MAX_SIZE) )
     {
@@ -57,6 +62,13 @@ static int logs_printf( uint32_t flag, const char * p_tag, const char* p_fmt, va
     }
 
     ret = vsnprintf( buf + offset, LOGS_FRAME_MAX_SIZE - offset, p_fmt, p_params_list );
+    if( ret < 0 )
+    {
+        /**< 格式化失败（编码异常等），静默返回 */
+        logs_unlock();
+        return 0;
+    }
+
     if( logs.opt.write )
     {
         total = offset + ret;
@@ -80,13 +92,19 @@ static int logs_printf( uint32_t flag, const char * p_tag, const char* p_fmt, va
  * @param mask        模块位掩码
  * @param flag        日志 FLAG
  * @param level_bits  对应等级的位掩码字段
- * @param p_tag       模块标签
- * @param p_fmt       格式化字符串
+ * @param p_tag       模块标签（可为 NULL）
+ * @param p_fmt       格式化字符串（为 NULL 时静默返回）
  * @param p_args      可变参数列表
  */
 static void logs_output( logs_mask_t mask, uint32_t flag, logs_mask_t level_bits,
                          const char *p_tag, const char *p_fmt, va_list p_args )
 {
+    /**< fmt 为 NULL 时无内容可输出 */
+    if( p_fmt == NULL )
+    {
+        return;
+    }
+
     /**< 日志未使能 */
     if( ( logs.levels.enabled & LOGS_EN_MASK ) != LOGS_EN_MASK )
     {
@@ -202,6 +220,10 @@ void logs_set_bitmap( logs_mask_t mask, uint8_t level )
             logs.levels.debug      |= mask;
         }
         break;
+
+        default:
+        {
+        } break;
     }
 }
 
